@@ -89,16 +89,21 @@ int main() {
 
 /*
 expect-output<<
-foo91 -> 91
-foo21 -> 21
+5=5
+*0.5
+*1.5
+*2.5
+*3.5
+*4.5
 foo1 -> 1
 foo11 -> 11
-foo31 -> 31
+foo21 -> 21
 foo41 -> 41
 foo51 -> 51
 foo61 -> 61
 foo71 -> 71
 foo81 -> 81
+foo91 -> 91
 >>
 expect-exit 0
 */
