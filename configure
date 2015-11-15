@@ -17,13 +17,14 @@ emitter = settings.emitter
 settings.c_includes = ['(src)/']
 
 
-def do_test(*args, **kwargs):
-    mconfig.build_and_link_c_objs(emitter, settings.host_machine(), settings, 'exec', *args, **kwargs)
+def do_test(execname, *args, **kwargs):
+    my_settings = settings.specialize(out=os.path.join(settings.out, '_'+execname))
+    mconfig.build_and_link_c_objs(emitter, settings.host_machine(), my_settings, 'exec', os.path.join(settings.out, execname), *args, **kwargs)
 
 do_test('htab', ['test/test-htab.c'])
 do_test('htab-cpp', ['test/test-htab.c'], '-x c++')
-do_test('vec', ['test/test-vec.c'])
-do_test('vec-cpp', ['test/test-vec.c'], '-x c++')
+do_test('vec', ['test/test-vec.c', 'cbit/vec.c'])
+do_test('vec-cpp', ['test/test-vec.c', 'cbit/vec.c'], '-x c++')
 
 emitter.add_command(settings, ['all'], list(emitter.all_outs), [], phony=True)
 emitter.set_default_rule('all')
