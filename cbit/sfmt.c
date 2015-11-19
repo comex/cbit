@@ -3,6 +3,23 @@ str str_sfmt_impl(const char *fmt, ...) {
     va_list ap;
     va_start(ap, fmt);
     while (1) {
+        char c = *fmt++;
+        if (c == 0)
+            break;
+        if (c != '%') {
+            vec_append_ccp(&outstr, c);
+            continue;
+        }
+        /*
+            1. %
+            2. [#-+ 0']*
+            3. vec separator character (OS X ext, ignore)
+            4. -?[0-9]*|\*([0-9]+\$)  field width (ignore explicit position)
+            5. (\.<same-as-field-width>)?  precision
+            6. length (ignore)
+            7. format char
+        */
+        char 
         switch (argtype) {
         case SFAT_END:
             printf("end\n");
@@ -16,7 +33,7 @@ str str_sfmt_impl(const char *fmt, ...) {
         X(         int,       SFAT_S);
         X(unsigned int,       SFAT_UI);
         X(         int,       SFAT_I);
-        X(unsigned long,      SFAT_UL);
+        X(unsigned long,      SFAT_UL);k
         X(         long,      SFAT_L);
         X(unsigned long long, SFAT_ULL);
         X(         long long, SFAT_LL);

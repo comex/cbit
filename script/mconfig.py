@@ -1280,6 +1280,17 @@ def build_and_link_c_objs(emitter, machine, settings, link_type, link_out, sourc
     ldflags_from_sets = [flag for lset in ldflag_sets for flag in lset]
     link_c_objs(emitter, machine, settings, link_type, link_out, objs + more_objs, link_with_cxx, force_cli, expand, ldflags_from_sets)
 
+def will_build_and_link_c(machine, link_types=set(), c=True, cxx=False):
+    c = machine.c_tools()
+    if c:
+        c.cc.required()
+    if cxx:
+        c.cxx.required()
+    if link_types:
+        c.dsymutil.optional()
+    if 'staticlib' in link_types:
+        c.ar.required()
+
 def guess_obj_fn(fn, settings):
     rel = os.path.relpath(fn, settings.src)
     if not rel.startswith('..'+os.path.sep):

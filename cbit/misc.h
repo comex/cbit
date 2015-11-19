@@ -46,3 +46,5 @@
 #define safe_mul(a, b) ((a) * (b))
 #define safe_add(a, b) ((a) + (b))
 
+#define cbit_max(a, b) ((a) > (b) ? (a) : (b))
+#define cbit_min(a, b) ((a) > (b) ? (b) : (a))

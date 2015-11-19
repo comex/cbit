@@ -4,7 +4,7 @@ DECL_VEC(const char *, ccp);
 DECL_VEC(int, int);
 
 int main() {
-    vec_storage_ccp stor = VEC_STORAGE_INIT_STATIC(&stor, cpp);
+    vec_storage_ccp stor = VEC_STORAGE_INITER(&stor, cpp);
     struct vec_ccp *vec = &stor.v;
     vec_free_storage_ccp(vec);
     VEC_STORAGE_INIT(&stor, ccp);
@@ -25,6 +25,10 @@ int main() {
     printf("copied length: %zd\n", vec2.length);
     vec_free_storage_ccp(vec);
     vec_free_storage_ccp(&vec2);
+    struct vec_int vec3 = VEC_INITER;
+    for (int i = 0; i < 10; i++)
+        memset(vec_appendp_n_int(&vec3, 2), i, 2 * sizeof(int));
+    printf("els[5] = %x\n", vec3.els[5]);
 }
 
 /*
@@ -67,5 +71,6 @@ expect-output<<
 34->el18
 35->el19
 copied length: 36
+els[5] = 2020202
 >>
 */

@@ -7,7 +7,8 @@ struct vec_internal {
     size_t length;
     size_t capacity;
     void *els;
-    char storage[1]; // must be at least one byte so vec_free works correctly
+    char storage[1]; /* must be at least one byte so vec_free
+                        works correctly */
 };
 
 #ifdef __cplusplus
@@ -111,14 +112,14 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
     } \
     UNUSED_STATIC_INLINE \
     struct vec_##name vec_copy_##name(const struct vec_##name *v) { \
-        struct vec_##name ret = VEC_INIT_BARE_STATIC(&ret, name); \
+        struct vec_##name ret = VEC_INITER; \
         size_t len = v->length; \
         vec_resize_##name(&ret, len); \
         memcpy(ret.els, v->els, len); \
         return ret; \
     } \
     typedef VEC_STORAGE_CAPA(name, 5) vec_storage_##name; \
-    typedef char __plz_end_decl_vec_with_semicolon_##name
+    typedef char __plz_end_DECL_VEC_with_semicolon_##name
 
 #define VEC_TY(name) __VEC_TY_##name
 
@@ -135,21 +136,21 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
     v->els = v->storage; \
 } while (0)
 
-#define VEC_STORAGE_INIT_STATIC(vs, name) \
+#define VEC_STORAGE_INITER(vs, name) \
     {{0, \
       (sizeof((vs)->rest) / sizeof((vs)->rest[0])) + 1, \
       (vs)->v.storage \
     }}
 
-#define VEC_INIT_BARE(vv, name) do { \
-    struct vec_##name *v = (vv); \
-    v->length = 0; \
-    v->capacity = 1; \
-    v->els = v->storage; \
+#define VEC_INIT(v) do { \
+    struct vec_internal *vi = &(v)->vi; \
+    vi->length = 0; \
+    vi->capacity = 0; \
+    vi->els = 0; \
 } while (0)
 
-#define VEC_INIT_BARE_STATIC(v, name) \
-    {{0, 1, (v)->storage}}
+#define VEC_INITER \
+    {{0, 0, 0}}
 
 /* guaranteed to *not* cache vec->length - pretty simple */
 
