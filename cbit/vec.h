@@ -54,7 +54,7 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
     } \
     UNUSED_STATIC_INLINE \
     void vec_resize_##name(struct vec_##name *v, size_t new_length) { \
-        if (new_length >= v->capacity || new_length < v->capacity / 3) \
+        if (new_length > v->capacity || new_length < v->capacity / 3) \
             vec_realloc_internal_as_necessary(&v->vi, new_length, \
                                               sizeof(v->els[0])); \
         v->length = new_length; \
@@ -64,6 +64,14 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
         size_t i = v->length++; \
         if (i == v->capacity) \
             vec_realloc_internal_as_necessary(&v->vi, i + 1, sizeof(v->els[0])); \
+        return &v->els[i]; \
+    } \
+    UNUSED_STATIC_INLINE \
+    VEC_TY(name) *vec_appendp_n_##name(struct vec_##name *v, size_t count) { \
+        size_t i = v->length; \
+        v->length = safe_add(v->length, count); \
+        if (v->length > v->capacity) \
+            vec_realloc_internal_as_necessary(&v->vi, v->length, sizeof(v->els[0])); \
         return &v->els[i]; \
     } \
     UNUSED_STATIC_INLINE \
@@ -101,6 +109,15 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
                 (orig - (idx + num)) * sizeof(v->els[0])); \
         vec_resize_##name(v, orig - num); \
     } \
+    UNUSED_STATIC_INLINE \
+    struct vec_##name vec_copy_##name(const struct vec_##name *v) { \
+        struct vec_##name ret = VEC_INIT_BARE_STATIC(&ret, name); \
+        size_t len = v->length; \
+        vec_resize_##name(&ret, len); \
+        memcpy(ret.els, v->els, len); \
+        return ret; \
+    } \
+    typedef VEC_STORAGE_CAPA(name, 5) vec_storage_##name; \
     typedef char __plz_end_decl_vec_with_semicolon_##name
 
 #define VEC_TY(name) __VEC_TY_##name
@@ -110,9 +127,6 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
         struct vec_##name v; \
         VEC_TY(name) rest[(n)-1]; \
     }
-
-#define VEC_STORAGE(ty) \
-    VEC_STORAGE_CAPA(ty, 5)
 
 #define VEC_STORAGE_INIT(vs, name) do { \
     struct vec_##name *v = &(vs)->v; \
@@ -126,6 +140,16 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
       (sizeof((vs)->rest) / sizeof((vs)->rest[0])) + 1, \
       (vs)->v.storage \
     }}
+
+#define VEC_INIT_BARE(vv, name) do { \
+    struct vec_##name *v = (vv); \
+    v->length = 0; \
+    v->capacity = 1; \
+    v->els = v->storage; \
+} while (0)
+
+#define VEC_INIT_BARE_STATIC(v, name) \
+    {{0, 1, (v)->storage}}
 
 /* guaranteed to *not* cache vec->length - pretty simple */
 

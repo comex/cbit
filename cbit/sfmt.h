@@ -1,17 +1,15 @@
 #pragma once
 
+#include "str.h"
 #include <stdbool.h>
-#include <stdarg.h>
-#include <stdio.h>
-#include <stdlib.h>
 
 #define SFMT_FIRST(arg, args...) arg
 #define SFMT_IGNORE(...)
 #define SFMT_FOURTH(args...) SFMT_FOURTH_(args)
 #define SFMT_FOURTH_(a1, a2, a3, a4, args...) a4
-/* this is not 100% right since it will get confused if you pass the identifier
- * for a function-like macro - maybe also if the argument expands to contain
- * commas
+/* following is not 100% right since it will get confused if you pass the
+ * identifier for a function-like macro - maybe also if the argument expands to
+ * contain commas
  * https://gustedt.wordpress.com/2010/06/08/detect-empty-macro-arguments/ is nice and thorough
  * but really, just don't do that.
  */
@@ -145,40 +143,4 @@ struct test { int a; };
 
 // test
 #define str_sfmt(fmt, rest...) str_sfmt_impl(fmt, SFMT_ARGS(rest), SFAT_END)
-static void str_sfmt_impl(const char *fmt, ...) {
-    va_list ap;
-    va_start(ap, fmt);
-    while (1) {
-        int argtype = va_arg(ap, int);
-        switch (argtype) {
-        case SFAT_END:
-            printf("end\n");
-            return;
-        #define X(ty, e) case e: va_arg(ap, ty); printf("%s\n", #e); break
-        X(         int,       SFAT_B);
-        X(         int,       SFAT_UC);
-        X(         int,       SFAT_SC);
-        X(         int,       SFAT_C);
-        X(         int,       SFAT_US);
-        X(         int,       SFAT_S);
-        X(unsigned int,       SFAT_UI);
-        X(         int,       SFAT_I);
-        X(unsigned long,      SFAT_UL);
-        X(         long,      SFAT_L);
-        X(unsigned long long, SFAT_ULL);
-        X(         long long, SFAT_LL);
-        X(         double,    SFAT_F);
-        X(         double,    SFAT_D);
-        X(         char *,    SFAT_CSTR);
-        default:
-            printf("?? %d\n", argtype);
-            abort();
-        }
-    }
-    va_end(ap);
-}
-
-
-int main() {
-    str_sfmt("fmt", 2, 2ul, (short)2000, "lol", 42.0, 42.0f, (char)'f');
-}
+str str_sfmt_impl(const char *fmt, ...);

@@ -4,9 +4,10 @@ DECL_VEC(const char *, ccp);
 DECL_VEC(int, int);
 
 int main() {
-    VEC_STORAGE(ccp) stor = VEC_STORAGE_INIT_STATIC(&stor, cpp);
-    VEC_STORAGE_INIT(&stor, ccp);
+    vec_storage_ccp stor = VEC_STORAGE_INIT_STATIC(&stor, cpp);
     struct vec_ccp *vec = &stor.v;
+    vec_free_storage_ccp(vec);
+    VEC_STORAGE_INIT(&stor, ccp);
     for (int i = 0; i < 20; i++) {
         char *x;
         asprintf(&x, "el%d", i);
@@ -20,7 +21,10 @@ int main() {
     VEC_FOREACH(vec, i, const char **c, ccp) {
         printf("%zd->%s\n", i, *c);
     }
-
+    struct vec_ccp vec2 = vec_copy_ccp(vec);
+    printf("copied length: %zd\n", vec2.length);
+    vec_free_storage_ccp(vec);
+    vec_free_storage_ccp(&vec2);
 }
 
 /*
@@ -62,5 +66,6 @@ expect-output<<
 33->el17
 34->el18
 35->el19
+copied length: 36
 >>
 */
