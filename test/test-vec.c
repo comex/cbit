@@ -4,29 +4,47 @@ DECL_VEC(const char *, ccp);
 DECL_VEC(int, int);
 
 int main() {
+    size_t i;
+    struct vec_ccp *vec, vec2;
+#ifdef SUPER_OLD_FASHIONED
+    struct vec_int vec3;
+    const char **c;
+    vec_storage_ccp stor;
+    VEC_STORAGE_INIT(&stor, ccp);
+#else
     vec_storage_ccp stor = VEC_STORAGE_INITER(&stor, cpp);
-    struct vec_ccp *vec = &stor.v;
+#endif
+    vec = &stor.v;
     vec_free_storage_ccp(vec);
     VEC_STORAGE_INIT(&stor, ccp);
-    for (int i = 0; i < 20; i++) {
+    for (i = 0; i < 20; i++) {
         char *x;
-        asprintf(&x, "el%d", i);
+        asprintf(&x, "el%zu", i);
         vec_append_ccp(vec, x);
     }
     vec_remove_ccp(vec, 5, 4);
     vec_add_space_ccp(vec, 9, 2);
-    for (int i = 9; i <= 10; i++)
+    for (i = 9; i <= 10; i++)
         vec->els[i] = "TILT";
     vec_concat_ccp(vec, vec);
-    VEC_FOREACH(vec, i, const char **c, ccp) {
+#ifdef SUPER_OLD_FASHIONED
+    for (i = 0; i < vec->length; i++)
+        printf("%zd->%s\n", i, vec->els[i]);
+#else
+    VEC_FOREACH(vec, i, const char **c, ccp)
         printf("%zd->%s\n", i, *c);
-    }
-    struct vec_ccp vec2 = vec_copy_ccp(vec);
+#endif
+
+    vec2 = vec_copy_ccp(vec);
     printf("copied length: %zd\n", vec2.length);
     vec_free_storage_ccp(vec);
     vec_free_storage_ccp(&vec2);
+#ifdef SUPER_OLD_FASHIONED
+    VEC_INIT(&vec3);
+#else
     struct vec_int vec3 = VEC_INITER;
-    for (int i = 0; i < 10; i++)
+#endif
+    for (i = 0; i < 10; i++)
         memset(vec_appendp_n_int(&vec3, 2), i, 2 * sizeof(int));
     printf("els[5] = %x\n", vec3.els[5]);
 }

@@ -30,10 +30,12 @@ def do_test(execname, srcs, extra_cflags=[], *args, **kwargs):
                         expand=False)
     emitter.add_command(my_settings, [phonyname], [out_phonyname], [], expand=False, phony=True)
 
-do_test('htab', ['test/test-htab.c'])
-do_test('htab-cpp', ['test/test-htab.c'], '-x c++')
-do_test('vec', ['test/test-vec.c', 'cbit/vec.c'])
-do_test('vec-cpp', ['test/test-vec.c', 'cbit/vec.c'], '-x c++')
+for suf, opts in [('', '-std=c11'),
+                  # it's not quite valid c89/c++whatever because of the anonymous union/struct but whatever
+                  ('-cpp', '-x c++ -std=c++03 -pedantic -Wno-c++11-long-long -Wno-gnu-anonymous-struct -Wno-nested-anon-types'),
+                  ('-old', '-std=c89 -pedantic -Wno-long-long -c11-extensions -DSUPER_OLD_FASHIONED')]:
+    do_test('htab'+suf, ['test/test-htab.c'], opts)
+    do_test('vec'+suf, ['test/test-vec.c', 'cbit/vec.c'], opts)
 
 emitter.add_command(settings, ['all'], list(emitter.all_outs) + test_phonies, [], phony=True)
 emitter.set_default_rule('all')

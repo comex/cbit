@@ -9,7 +9,7 @@ struct htab_internal {
     size_t length;
     size_t capacity;
     void *base;
-    char hi_storage[1]; // see vec.h
+    char hi_storage[1]; /* see vec.h */
 };
 
 /* Declare the helper functions for a htab key type without static - put this
@@ -21,9 +21,12 @@ struct htab_internal {
     /* bool null_func(const ty *) - check whether the stored key is a \
      * special invalid marker. \
      * May be a macro. */ \
-    null_func \
+    null_func, \
+    /* uint8_t nil_byte - which byte to memset to initially. \
+     * null_func(<all bytes nil_byte>) must be true. */ \
+    nil_byte \
 ) \
-    DO_DECL_HTAB_KEY(name, key_ty, null_func, )
+    DO_DECL_HTAB_KEY(name, key_ty, null_func, nil_byte, extern)
 
 /* Declare and implement the helper functions static inline.  For the argument
  * meanings, see IMPL_HTAB_KEY. */
@@ -35,11 +38,12 @@ struct htab_internal {
     null_func, \
     nil_byte \
 ) \
-    DO_DECL_HTAB_KEY(name, key_ty, null_func, UNUSED_STATIC_INLINE); \
-    IMPL_HTAB_KEY(name, hash_func, eq_func, nil_byte)
+    DO_DECL_HTAB_KEY(name, key_ty, null_func, nil_byte, UNUSED_STATIC_INLINE); \
+    IMPL_HTAB_KEY(name, hash_func, eq_func)
 
-#define DO_DECL_HTAB_KEY(name, key_ty, null_func, func_decl) \
+#define DO_DECL_HTAB_KEY(name, key_ty, null_func, nil_byte, func_decl) \
     typedef key_ty __htab_key_key_ty_##name; \
+    enum { __htab_key_nil_byte_##name = (nil_byte) }; \
     DO_DECL_HTAB_KEY_(name, __htab_key_key_ty_##name, null_func, func_decl)
 #define DO_DECL_HTAB_KEY_(name, key_ty, null_func, func_decl) \
     UNUSED_STATIC_INLINE \
@@ -69,14 +73,11 @@ struct htab_internal {
     /* bool eq_func(const ty *stored, const ty *queried) - check whether the \
      * stored key is equal to the requested key (which is assumed to be valid). \
      * May be a macro. */ \
-    eq_func, \
-    /* uint8_t nil_byte - which byte to memset to initially. \
-     * null_func(<all bytes nil_byte>) must be true. */ \
-    nil_byte \
+    eq_func \
 ) \
     DO_IMPL_HTAB_KEY(name, __htab_key_key_ty_##name, hash_func, \
-                     eq_func, nil_byte)
-#define DO_IMPL_HTAB_KEY(name, key_ty, hash_func, eq_func, nil_byte) \
+                     eq_func)
+#define DO_IMPL_HTAB_KEY(name, key_ty, hash_func, eq_func) \
     void __htab_key_resize_##name(struct htab_internal *CBIT_RESTRICT hi, \
                                   size_t capacity, \
                                   size_t entry_size); \
@@ -84,13 +85,15 @@ struct htab_internal {
                                    const key_ty *CBIT_RESTRICT key, \
                                    size_t entry_size, \
                                    bool add) { \
+        size_t capacity, i, hash; \
+        char *buckets; \
         if (add && \
             hi->capacity * 2 <= hi->length * 3) \
             __htab_key_resize_##name(hi, hi->capacity * 2, entry_size); \
-        size_t capacity = hi->capacity; \
-        size_t hash = (hash_func(key)) % capacity; \
-        size_t i = hash; \
-        char *buckets = (char *) hi->base; \
+        capacity = hi->capacity; \
+        hash = (hash_func(key)) % capacity; \
+        i = hash; \
+        buckets = (char *) hi->base; \
         do { \
             key_ty *bucket = (key_ty *) (buckets + i * entry_size); \
             if (__htab_key_is_null_##name(bucket)) { \
@@ -117,6 +120,9 @@ struct htab_internal {
         key_ty *hole = (key_ty *) op; \
         key_ty *cur = hole; \
         while (1) { \
+            size_t cur_hash; \
+            key_ty *cur_chain_first; \
+            bool cf_after_hole; \
             if (cur == end) \
                 cur = (key_ty *) buckets; \
             cur = (key_ty *) ((char *) cur + entry_size); \
@@ -125,13 +131,13 @@ struct htab_internal {
                  * positions (hashes) strictly 'after' the hole position, \
                  * so we can't move any of them into the hole.  but that \
                  * also means it's safe to just erase the hole. */ \
-                memset(hole, nil_byte, sizeof(key_ty)); \
+                memset(hole, __htab_key_nil_byte_##name, sizeof(key_ty)); \
                 break; \
             } \
-            size_t cur_hash = (hash_func(cur)) % capacity; \
-            key_ty *cur_chain_first = (key_ty *) \
+            cur_hash = (hash_func(cur)) % capacity; \
+            cur_chain_first = (key_ty *) \
                 ((char *) buckets + cur_hash * entry_size); \
-            bool cf_after_hole /* cyclically */ = hole <= cur ? \
+            cf_after_hole /* cyclically */ = hole <= cur ? \
                 (hole < cur_chain_first) : \
                 (cur < cur_chain_first && cur_chain_first <= hole); \
             if (!cf_after_hole) { \
@@ -142,7 +148,7 @@ struct htab_internal {
         hi->length--; \
     } \
     void __htab_key_memset_##name(void *ptr, size_t size) { \
-        memset(ptr, (nil_byte), size); \
+        memset(ptr, __htab_key_nil_byte_##name, size); \
     } \
     void __htab_key_resize_##name(struct htab_internal *CBIT_RESTRICT hi, \
                                   size_t size, \
@@ -150,12 +156,13 @@ struct htab_internal {
         size_t old_size = hi->capacity * entry_size; \
         size_t new_size = safe_mul(size, entry_size); \
         void *new_buf = malloc(new_size); \
-        memset(new_buf, (nil_byte), new_size); \
+        size_t i; \
         struct htab_internal temp; \
+        memset(new_buf, __htab_key_nil_byte_##name, new_size); \
         temp.length = 0; \
         temp.capacity = size; \
         temp.base = new_buf; \
-        for (size_t i = 0; i < old_size; i += entry_size) { \
+        for (i = 0; i < old_size; i += entry_size) { \
             key_ty *bucket = (key_ty *) ((char *) hi->base + i); \
             if (!__htab_key_is_null_##name(bucket)) { \
                 memcpy( \
@@ -179,6 +186,7 @@ struct htab_internal {
     value_ty) \
     typedef __htab_key_key_ty_##key_name __htab_key_ty_##name; \
     typedef value_ty __htab_value_ty_##name; \
+    enum { __htab_nil_byte_##name = __htab_key_nil_byte_##key_name }; \
     \
     DO_DECL_HTAB(name, \
                  __htab_key_ty_##name, \
@@ -255,7 +263,7 @@ struct htab_internal {
     } \
     UNUSED_STATIC_INLINE \
     void __htab_memset_##name(void *ptr, size_t size) { \
-        return __htab_key_memset_##key_name(ptr, size); \
+        __htab_key_memset_##key_name(ptr, size); \
     } \
     UNUSED_STATIC_INLINE \
     bool __htab_is_null_##name(const key_ty *bucket) { \
@@ -263,7 +271,7 @@ struct htab_internal {
     } \
     UNUSED_STATIC_INLINE \
     void htab_resize_##name(htab_ty *ht, size_t size) { \
-        return __htab_key_resize_##key_name(&ht->hi, size, sizeof(bucket_ty)); \
+        __htab_key_resize_##key_name(&ht->hi, size, sizeof(bucket_ty)); \
     } \
     UNUSED_STATIC_INLINE \
     void htab_free_storage_##name(htab_ty *ht) { \
@@ -284,15 +292,20 @@ struct htab_internal {
 #define HTAB_STORAGE_INIT(hs, name) do { \
     struct htab_##name *h = &(hs)->h; \
     h->length = 0; \
-    h->capacity = (sizeof((hs)->rest) / sizeof(struct htab_bucket_##name)) + 1; \
+    h->capacity = (sizeof((hs)->rest) / \
+                   sizeof(struct htab_bucket_##name)) + 1; \
     h->base = h->storage; \
     __htab_memset_##name(h->base, \
                          h->capacity * sizeof(struct htab_bucket_##name)); \
 } while (0)
 
-/* only works if nil_byte is 0 */
-#define HTAB_STORAGE_INIT_STATIC(hs, name) \
-    {{0, \
+/* only works if nil_byte is 0, and doesn't work in C89 */
+#define HTAB_STORAGE_INITER(hs, name) \
+    {{( \
+       0, \
+       CBIT_STATIC_ASSERT_EXPR(__htab_nil_byte_##name == 0, \
+            "HTAB_STORAGE_INITER only works with nil_byte == 0"), \
+       0), \
       (sizeof((hs)->rest) / sizeof(struct htab_bucket_##name)) + 1, \
       (hs)->h.storage \
     }}
@@ -308,9 +321,12 @@ struct htab_internal {
                 LET_LOOP(key_var = &__htfe_ht->base[__htfe_bucket].key) \
                 LET_LOOP(val_var = &__htfe_ht->base[__htfe_bucket].value)
 
+/* Note: this violates strict aliasing if the hash/eq/null functions actually
+ * dereference the key! */
 #define DECL_HTAB_KEY_ALIAS(name, key_ty, origname) \
-    DO_DECL_HTAB_KEY_ALIAS_(name, key_ty, origname, __htab_key_key_ty_##origname)
-#define DECL_HTAB_KEY_ALIAS_(name, key_ty, origname, origkey_ty) \
+    typedef key_ty __htab_key_key_ty_##name; \
+    DO_DECL_HTAB_KEY_ALIAS(name, __htab_key_key_ty_##name, origname, __htab_key_key_ty_##origname)
+#define DO_DECL_HTAB_KEY_ALIAS(name, key_ty, origname, origkey_ty) \
     UNUSED_STATIC_INLINE \
     void *__htab_key_lookup_##name(struct htab_internal *CBIT_RESTRICT hi, \
                                    const key_ty *CBIT_RESTRICT key, \
@@ -338,4 +354,30 @@ struct htab_internal {
                                   size_t size, \
                                   size_t entry_size) { \
         __htab_key_resize_##origname(hi, size, entry_size); \
-    }
+    } \
+    typedef char __plz_end_decl_htab_key_alias_with_semicolon_##name
+
+typedef char __htab_ptrbytes[sizeof(void *)];
+UNUSED_STATIC_INLINE
+size_t __htab_pb_hash(const __htab_ptrbytes *pb) {
+    size_t size;
+    memcpy(&size, pb, sizeof(size));
+    if (sizeof(size) == 4)
+        return (size_t) ((size * 0xdeadbeef) % 4294967291);
+    else
+        return (size_t) ((size * 0xdeadbeefdeadbeefull) % 18446744073709551557ull);
+}
+UNUSED_STATIC_INLINE
+bool __htab_pb_eq(const __htab_ptrbytes *pb, const __htab_ptrbytes *pb2) {
+    return !memcmp(pb, pb2, sizeof(__htab_ptrbytes));
+}
+UNUSED_STATIC_INLINE
+bool __htab_pb_null(const __htab_ptrbytes *pb) {
+    static const __htab_ptrbytes zeroes = {0};
+    return !memcmp(pb, &zeroes, sizeof(__htab_ptrbytes));
+}
+DECL_STATIC_HTAB_KEY(__htab_ptrbytes, __htab_ptrbytes, __htab_pb_hash,
+                     __htab_pb_eq, __htab_pb_null, 0);
+#undef pb_hash
+#undef pb_eq
+#undef pb_null

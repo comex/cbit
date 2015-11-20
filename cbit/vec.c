@@ -4,6 +4,7 @@
 
 void vec_realloc_internal(struct vec_internal *vi, size_t new_capacity,
                           size_t esize) {
+    size_t new_size;
     if (new_capacity == 0) {
         if (vi->els != vi->storage)
             free(vi->els);
@@ -11,7 +12,7 @@ void vec_realloc_internal(struct vec_internal *vi, size_t new_capacity,
         vi->capacity = 0;
         return;
     }
-    size_t new_size = safe_mul(new_capacity, esize);
+    new_size = safe_mul(new_capacity, esize);
     if (vi->els == vi->storage) {
         void *new_buf = malloc(new_size);
         size_t min_cap = cbit_min(new_capacity, vi->capacity);

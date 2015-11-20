@@ -1,12 +1,36 @@
 #pragma once
 
+#define CBIT_STATIC_ASSERT(what, msg) \
+    extern char __cbit_static_assertion(char (*)[(what) ? 1 : -1])
+#define CBIT_STATIC_ASSERT_EXPR(what, msg) \
+    sizeof(char[(what) ? 1 : -1])
+
 #ifdef __cplusplus
-#define CBIT_RESTRICT __restrict
+    #define CBIT_INLINE inline
+    #if __cplusplus >= 200103L
+        #undef CBIT_STATIC_ASSERT
+        #define CBIT_STATIC_ASSERT static_assert
+    #endif
 #else
-#define CBIT_RESTRICT restrict
+    #if __STDC_VERSION__ >= 199901L
+        #define CBIT_INLINE inline
+        #define CBIT_RESTRICT restrict
+    #endif
+    #if __STDC_VERSION__ >= 201112L
+        #undef CBIT_STATIC_ASSERT
+        #define CBIT_STATIC_ASSERT _Static_assert
+    #endif
 #endif
 
-#define UNUSED_STATIC_INLINE __attribute__((unused)) static inline
+#ifndef CBIT_INLINE
+#define CBIT_INLINE __inline
+#endif
+
+#ifndef CBIT_RESTRICT
+#define CBIT_RESTRICT __restrict
+#endif
+
+#define UNUSED_STATIC_INLINE __attribute__((unused)) static CBIT_INLINE
 
 #define LET_LOOP__(expr, ctr) \
     if (0) \

@@ -3,14 +3,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
-struct teststr {
-    bool valid;
-    const char *what;
-};
-#define ts_null(ts) ({ if (0) printf("null? %p\n", *ts); !*ts; })
-#define ts_eq(ts, cp) ({ if (0) printf("eq? %p %p\n", *ts, *cp); !strcmp(*(ts), *(cp)); })
+static bool ts_null(const char *const *ts) {
+    if (0) printf("null? %p\n", *ts);
+    return !*ts;
+}
+static bool ts_eq(const char *const *ts1, const char *const *ts2) {
+    if (0) printf("eq? %p %p\n", *ts1, *ts2);
+    return !strcmp(*ts1, *ts2);
+}
 #define ts_hash(strp) strlen(*(strp))
-DECL_EXTERN_HTAB_KEY(teststr, const char *, ts_null);
+DECL_EXTERN_HTAB_KEY(teststr, const char *, ts_null, /*nil_byte*/ 0);
 DECL_HTAB(teststr_int, teststr, int);
 
 #define u32_hash(up) (*(up) % 100)
@@ -20,12 +22,30 @@ DECL_HTAB(teststr_int, teststr, int);
 DECL_STATIC_HTAB_KEY(u32, uint32_t, u32_hash, u32_eq, u32_null, 0);
 DECL_HTAB(u32_u32, u32, uint32_t);
 
+DECL_HTAB_KEY_ALIAS(intptr, int *, __htab_ptrbytes);
+
 int main() {
+    int i;
+    struct htab_teststr_int *hp;
+    HTAB_STORAGE(u32_u32) h2;
+    uint32_t h2_raw[501];
     /* test loop crap */
+#ifdef SUPER_OLD_FASHIONED
+    HTAB_STORAGE(teststr_int) stor;
+    int y;
+    LET(y = 5)
+#else
     LET(int y = 5)
+#endif
         printf("5=%d\n", y);
-    for (int i = 0; ; i++) {
-        LET_LOOP(int x = 5) {
+    for (i = 0; ; i++) {
+#ifdef SUPER_OLD_FASHIONED
+        int x;
+        LET_LOOP(x = 5)
+#else
+        LET_LOOP(int x = 5)
+#endif
+        {
             printf("*%d.%d\n", i, x);
             if (i == 4)
                 break;
@@ -35,14 +55,16 @@ int main() {
         abort();
     }
 
-
-    struct htab_teststr_int *hp;
-    HTAB_STORAGE(teststr_int) stor = HTAB_STORAGE_INIT_STATIC(&stor, teststr_int);
+#ifdef SUPER_OLD_FASHIONED
+    HTAB_STORAGE_INIT(&stor, teststr_int);
+#else
+    HTAB_STORAGE(teststr_int) stor = HTAB_STORAGE_INITER(&stor, teststr_int);
+#endif
     hp = &stor.h;
-    for(int i = 0; i < 100; i++) {
+    for (i = 0; i < 100; i++) {
         const char *k;
-        asprintf((char **) &k, "foo%d", i);
         bool is_new;
+        asprintf((char **) &k, "foo%d", i);
         *htab_setp_teststr_int(hp, &k, &is_new) = i;
         assert(is_new);
         assert(htab_getbucket_teststr_int(hp, &k)->value == i);
@@ -56,17 +78,31 @@ int main() {
         assert(!is_new);
         htab_remove_teststr_int(hp, &k);
     }
+#ifdef SUPER_OLD_FASHIONED
+    /* TODO make some kind of 'iterator' macro? */
+    {
+        size_t b;
+        for (b = 0; b < hp->capacity; b++) {
+            if (ts_null(&hp->base[b].key))
+                continue;
+            if(hp->base[b].value % 10 != 1)
+                continue;
+            printf("%s -> %d\n",
+                   hp->base[b].key,
+                   hp->base[b].value);
+        }
+    }
+#else
     HTAB_FOREACH(hp, const char **k, int *v, teststr_int) {
         if(*v % 10 == 1)
             printf("%s -> %d\n", *k, *v);
     }
+#endif
     htab_free_storage_teststr_int(hp);
 
-    HTAB_STORAGE(u32_u32) h2;
     HTAB_STORAGE_INIT(&h2, u32_u32);
-    uint32_t h2_raw[501];
     memset(h2_raw, 0xff, sizeof(h2_raw));
-    for (int i = 0; i < 3000; i++) {
+    for (i = 0; i < 3000; i++) {
         uint32_t op = arc4random() & 1;
         uint32_t key = (arc4random() % 500) + 1;
         if (op == 0) { /* set */
@@ -78,12 +114,15 @@ int main() {
             h2_raw[key] = -1;
         }
     }
-    for (uint32_t k = 1; k <= 500; k++) {
-        uint32_t raw = h2_raw[k];
-        uint32_t *hashedp = htab_getp_u32_u32(&h2.h, &k);
-        uint32_t hashed = hashedp ? *hashedp : -1;
-        /* printf("%d %x %x\n", k, raw, hashed); */
-        assert(hashed == raw);
+    {
+        uint32_t k;
+        for (k = 1; k <= 500; k++) {
+            uint32_t raw = h2_raw[k];
+            uint32_t *hashedp = htab_getp_u32_u32(&h2.h, &k);
+            uint32_t hashed = hashedp ? *hashedp : -1;
+            /* printf("%d %x %x\n", k, raw, hashed); */
+            assert(hashed == raw);
+        }
     }
 }
 
@@ -108,12 +147,4 @@ foo91 -> 91
 expect-exit 0
 */
 
-IMPL_HTAB_KEY(teststr, ts_hash, ts_eq, /*nil_byte*/ 0);
-/*
-
-#define c8_hash(c8) (*(size_t *) (c8))
-#define c8_eq(c8, c9) (*(size_t *) (c8) == *(size_t *) (c9))
-#define c8_null(c8) (!*(size_t *) (c8))
-typedef char char8[8];
-DECL_STATIC_HTAB_KEY(char8, char8, c8_hash, c8_eq, c8_null, 0);
-*/
+IMPL_HTAB_KEY(teststr, ts_hash, ts_eq);
