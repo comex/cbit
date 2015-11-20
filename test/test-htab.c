@@ -10,7 +10,7 @@ struct teststr {
 #define ts_null(ts) ({ if (0) printf("null? %p\n", *ts); !*ts; })
 #define ts_eq(ts, cp) ({ if (0) printf("eq? %p %p\n", *ts, *cp); !strcmp(*(ts), *(cp)); })
 #define ts_hash(strp) strlen(*(strp))
-DECL_EXTERN_HTAB_KEY(teststr, const char *);
+DECL_EXTERN_HTAB_KEY(teststr, const char *, ts_null);
 DECL_HTAB(teststr_int, teststr, int);
 
 #define u32_hash(up) (*(up) % 100)
@@ -42,18 +42,18 @@ int main() {
     for(int i = 0; i < 100; i++) {
         const char *k;
         asprintf((char **) &k, "foo%d", i);
-        bool new;
-        *htab_setp_teststr_int(hp, &k, &new) = i;
-        assert(new);
+        bool is_new;
+        *htab_setp_teststr_int(hp, &k, &is_new) = i;
+        assert(is_new);
         assert(htab_getbucket_teststr_int(hp, &k)->value == i);
         assert(*htab_getp_teststr_int(hp, &k) == i);
     }
     {
         const char *k = "foo31";
-        bool new;
+        bool is_new;
         htab_setp_teststr_int(hp, &k, NULL);
-        htab_setp_teststr_int(hp, &k, &new);
-        assert(!new);
+        htab_setp_teststr_int(hp, &k, &is_new);
+        assert(!is_new);
         htab_remove_teststr_int(hp, &k);
     }
     HTAB_FOREACH(hp, const char **k, int *v, teststr_int) {
@@ -108,4 +108,12 @@ foo91 -> 91
 expect-exit 0
 */
 
-IMPL_HTAB_KEY(teststr, ts_hash, ts_eq, ts_null, /*nil_byte*/ 0);
+IMPL_HTAB_KEY(teststr, ts_hash, ts_eq, /*nil_byte*/ 0);
+/*
+
+#define c8_hash(c8) (*(size_t *) (c8))
+#define c8_eq(c8, c9) (*(size_t *) (c8) == *(size_t *) (c9))
+#define c8_null(c8) (!*(size_t *) (c8))
+typedef char char8[8];
+DECL_STATIC_HTAB_KEY(char8, char8, c8_hash, c8_eq, c8_null, 0);
+*/

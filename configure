@@ -17,10 +17,10 @@ settings.c_includes = ['(src)/']
 
 test_phonies = []
 
-def do_test(execname, srcs, *args, **kwargs):
+def do_test(execname, srcs, extra_cflags=[], *args, **kwargs):
     my_settings = settings.specialize(out=os.path.join(settings.out, '_'+execname))
     ename = os.path.join(settings.out, execname)
-    mconfig.build_and_link_c_objs(emitter, settings.host_machine(), my_settings, 'exec', ename, srcs, *args, **kwargs)
+    mconfig.build_and_link_c_objs(emitter, settings.host_machine(), my_settings, 'exec', ename, srcs, extra_cflags=extra_cflags, *args, **kwargs)
     phonyname = 'test-' + execname
     out_phonyname = os.path.join(settings.out, phonyname)
     test_phonies.append(out_phonyname)

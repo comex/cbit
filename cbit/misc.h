@@ -1,5 +1,11 @@
 #pragma once
 
+#ifdef __cplusplus
+#define CBIT_RESTRICT __restrict
+#else
+#define CBIT_RESTRICT restrict
+#endif
+
 #define UNUSED_STATIC_INLINE __attribute__((unused)) static inline
 
 #define LET_LOOP__(expr, ctr) \

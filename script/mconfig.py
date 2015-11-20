@@ -1276,7 +1276,7 @@ def link_c_objs(emitter, machine, settings, link_type, link_out, objs, link_with
     emitter.add_command(settings, env['outs'], env['ins'], env['cmds'], expand=False, mkdirs=True)
 
 def build_and_link_c_objs(emitter, machine, settings, link_type, link_out, sources, headers=[], objs=[], settings_cb=None, force_cli=False, expand=True, extra_deps=[], extra_cflags=[], extra_ldflags=[]):
-    more_objs, link_with_cxx, ldflag_sets = build_c_objs(emitter, machine, settings, sources, headers, settings_cb, force_cli, expand)
+    more_objs, link_with_cxx, ldflag_sets = build_c_objs(emitter, machine, settings, sources, headers, settings_cb, force_cli, expand, extra_cflags)
     ldflags_from_sets = [flag for lset in ldflag_sets for flag in lset]
     link_c_objs(emitter, machine, settings, link_type, link_out, objs + more_objs, link_with_cxx, force_cli, expand, ldflags_from_sets)
 
