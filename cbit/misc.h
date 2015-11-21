@@ -1,4 +1,15 @@
+#include <assert.h>
+#include <stdio.h>
+#include <stdlib.h>
 #pragma once
+
+#ifdef NDEBUG
+#define CBIT_DEBUG 0
+#else
+#define CBIT_DEBUG 1
+#endif
+
+#define cbit_dassert assert
 
 #define CBIT_STATIC_ASSERT(what, msg) \
     extern char __cbit_static_assertion(char (*)[(what) ? 1 : -1])
@@ -7,12 +18,16 @@
 
 #ifdef __cplusplus
     #define CBIT_INLINE inline
-    #if __cplusplus >= 200103L
+    #define CBIT_ANCIENTC 0
+    #if __cplusplus >= 201103L
+        #define CBIT_HAVE_VARIADIC_MACROS 1
         #undef CBIT_STATIC_ASSERT
         #define CBIT_STATIC_ASSERT static_assert
     #endif
 #else
     #if __STDC_VERSION__ >= 199901L
+        #define CBIT_ANCIENTC 0
+        #define CBIT_HAVE_VARIADIC_MACROS 1
         #define CBIT_INLINE inline
         #define CBIT_RESTRICT restrict
     #endif
@@ -20,6 +35,14 @@
         #undef CBIT_STATIC_ASSERT
         #define CBIT_STATIC_ASSERT _Static_assert
     #endif
+#endif
+
+#ifndef CBIT_ANCIENTC
+#define CBIT_ANCIENTC 1
+#endif
+
+#ifndef CBIT_HAVE_VARIADIC_MACROS
+#define CBIT_HAVE_VARIADIC_MACROS 0
 #endif
 
 #ifndef CBIT_INLINE
@@ -78,3 +101,20 @@
 
 #define cbit_max(a, b) ((a) > (b) ? (a) : (b))
 #define cbit_min(a, b) ((a) > (b) ? (b) : (a))
+
+#if CBIT_HAVE_VARIADIC_MACROS
+#define cbit_panic(...) do { \
+    fprintf(stderr, __VA_ARGS__); \
+    abort(); \
+} while(0)
+#else
+#include <stdarg.h>
+UNUSED_STATIC_INLINE
+void cbit_panic(const char *msg, ...) {
+    va_list ap;
+    va_start(ap, msg);
+    vfprintf(stderr, msg, ap);
+    va_end(ap);
+    abort();
+}
+#endif

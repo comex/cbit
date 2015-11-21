@@ -45,7 +45,8 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
     UNUSED_STATIC_INLINE \
     struct vec_##name vec_borrow##name(VEC_TY(name) *els, size_t length) { \
         struct vec_##name v; \
-        v.length = v.capacity = length; \
+        v.length = length; \
+        v.capacity = 0; \
         v.els = els; \
         return v; \
     } \
@@ -62,17 +63,24 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
     } \
     UNUSED_STATIC_INLINE \
     VEC_TY(name) *vec_appendp_##name(struct vec_##name *v) { \
-        size_t i = v->length++; \
-        if (i == v->capacity) \
-            vec_realloc_internal_as_necessary(&v->vi, i + 1, sizeof(v->els[0])); \
+        size_t i, new_length; \
+        cbit_dassert(!VEC_DBG_ISREADONLY(v)); \
+        i = v->length; \
+        new_length = i + 1; \
+        if (i >= v->capacity) \
+            vec_realloc_internal_as_necessary(&v->vi, new_length, sizeof(v->els[0])); \
+        v->length = new_length; \
         return &v->els[i]; \
     } \
     UNUSED_STATIC_INLINE \
     VEC_TY(name) *vec_appendp_n_##name(struct vec_##name *v, size_t count) { \
-        size_t i = v->length; \
-        v->length = safe_add(v->length, count); \
-        if (v->length > v->capacity) \
-            vec_realloc_internal_as_necessary(&v->vi, v->length, sizeof(v->els[0])); \
+        size_t i, new_length; \
+        cbit_dassert(!VEC_DBG_ISREADONLY(v)); \
+        i = v->length; \
+        new_length = safe_add(v->length, count); \
+        if (new_length > v->capacity) \
+            vec_realloc_internal_as_necessary(&v->vi, new_length, sizeof(v->els[0])); \
+        v->length = new_length; \
         return &v->els[i]; \
     } \
     UNUSED_STATIC_INLINE \
@@ -81,8 +89,11 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
     } \
     UNUSED_STATIC_INLINE \
     VEC_TY(name) vec_pop_##name(struct vec_##name *v) { \
-        size_t i = v->length - 1; \
-        VEC_TY(name) ret = v->els[i]; \
+        size_t i; \
+        VEC_TY(name) ret; \
+        cbit_dassert(!VEC_DBG_ISREADONLY(v)); \
+        i = v->length - 1; \
+        ret = v->els[i]; \
         if (v->els != v->storage && i < v->capacity / 3) \
             vec_realloc_internal_as_necessary(&v->vi, i, sizeof(v->els[0])); \
         v->length = i; \
@@ -105,7 +116,9 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
     UNUSED_STATIC_INLINE \
     void vec_remove_##name(struct vec_##name *v, size_t idx, size_t num) { \
         /* todo optimize */ \
-        size_t orig = v->length; \
+        size_t orig; \
+        cbit_dassert(!VEC_DBG_ISREADONLY(v)); \
+        orig = v->length; \
         memmove(&v->els[idx], &v->els[idx + num], \
                 (orig - (idx + num)) * sizeof(v->els[0])); \
         vec_resize_##name(v, orig - num); \
@@ -151,6 +164,8 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
 
 #define VEC_INITER \
     {{0, 0, 0}}
+
+#define VEC_DBG_ISREADONLY(v) ((v)->length && !(v)->capacity)
 
 /* guaranteed to *not* cache vec->length - pretty simple */
 

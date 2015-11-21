@@ -48,7 +48,7 @@ str str_sfmt_impl(const char *fmt, ...) {
     {
         int argtype = va_arg(ap, int);
         if (argtype != SFAT_END)
-            cbit_panic("str_sfmt_impl: wrong number of arguments with format string <%s>", fmt);
+            cbit_panic("str_sfmt_impl: wrong number of arguments with format string <%s>\n", fmt);
     }
     va_end(ap);
 }

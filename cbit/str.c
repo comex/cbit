@@ -1,12 +1,31 @@
 #include "str.h"
 
+#define ACTUALLY_STR_REALLOC
+#define vec_internal str
+#define vec_realloc_internal str_realloc
+#define vec_realloc_internal_as_necessary str_realloc_internal_as_necessary
+#define VEC_DBG_ISREADONLY STR_DBG_ISREADONLY
+#define esize 1
+#include "vec.c"
+#undef vec_internal
+#undef vec_realloc_internal
+#undef vec_realloc_internal_as_necessary
+#undef esize
+#undef VEC_DBG_ISREADONLY
+
+char str_empty_els = '\0';
+
 str str_fmt(const char *format, ...) {
     char *out;
+    str outs;
     va_list ap;
-    va_start(ap);
-    int ret = vasprintf(&out, format, ap);
+    int ret;
+    va_start(ap, format);
+    ret = vasprintf(&out, format, ap);
     va_end(ap);
     if (ret == -1)
-        cbit_panic("str_fmt: out of memory");
-    return (str) {.length = ret, .capacity = ret, .els = cstr};
+        cbit_panic("str_fmt: out of memory\n");
+    outs.length = outs.capacity = ret;
+    outs.els = out;
+    return outs;
 }
