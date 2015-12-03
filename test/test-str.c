@@ -1,4 +1,5 @@
 #include "cbit/str.h"
+#include "cbit/sfmt.h"
 #include <stdio.h>
 
 int main() {

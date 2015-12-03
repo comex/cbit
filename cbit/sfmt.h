@@ -109,6 +109,9 @@ enum sfmt_argtype {
     SFAT_ULL, SFAT_LL,
     SFAT_F, SFAT_D,
     SFAT_CSTR,
+    SFAT_STR,
+    SFAT_STR_OWNED,
+    SFAT_UNKNOWN
 };
 
 struct test { int a; };
@@ -118,7 +121,9 @@ struct test { int a; };
 #define SFMT_ARGTYPE(arg) \
     _Generic(\
         /* the statement expression is to promote from array types */ \
-        ({ (arg); }), \
+        ({ typeof(arg) __arg; \
+           __arg + 0; /* if you get an error on this line, it means you passed a bad type to sfmt */ \
+           __arg; }), \
         /* note - char, short, bool, and float will be promoted and must be
          * retrieved as int/double, but at least for bool, the original type is
          * useful */ \
@@ -138,7 +143,10 @@ struct test { int a; };
                  double:    SFAT_D, \
         unsigned char *:    SFAT_CSTR, \
           signed char *:    SFAT_CSTR, \
-                 char *:    SFAT_CSTR \
+                 char *:    SFAT_CSTR, \
+                  str *:    SFAT_STR, \
+                    str:    SFAT_STR_OWNED, \
+                default:    SFAT_UNKNOwN \
     )
 
 // test
