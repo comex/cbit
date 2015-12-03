@@ -19,7 +19,7 @@ static void read_sfmt_arg_internal(struct sfmt_arg_internal *ai, va_list ap,
     int argtype = va_arg(ap, int);
     switch (argtype) {
     case SFAT_END:
-        cbit_panic("not enough arguments for format '%s'\n", fmt);
+        cbit_panic("sfmt: not enough arguments for format '%s'\n", fmt);
         return;
     case SFAT_SC:
     case SFAT_S:
@@ -102,7 +102,7 @@ static void sfmt_hex(char *tmp, str *out_str, unsigned long long ull,
         *--ptr = '-';
     else if (poschar)
         *--ptr = poschar;
-    *out_str = str_borrow(ptr, ep - ptr); 
+    *out_str = str_borrow(ptr, ep - ptr);
 }
 
 static void sfmt_decint(char *tmp, str *out_str, unsigned long long ull,
@@ -137,6 +137,7 @@ static void sfmt_decfloat(char *tmp, str *out_str, double num, char poschar,
 }
 
 str str_sfmt_impl(const char *fmt, ...) {
+    const char *orig_fmt = fmt;
     str outstr = STR_INITER;
     str *to_print;
     bool free_to_print = false;
@@ -152,6 +153,7 @@ str str_sfmt_impl(const char *fmt, ...) {
             str_appendchar(&outstr, c);
             continue;
         }
+        c = *fmt++;
         /*
             1. %
             2. [#-+ 0']*
@@ -208,16 +210,16 @@ str str_sfmt_impl(const char *fmt, ...) {
                 }
                 read_sfmt_arg_internal(&ai, ap, fmt);
                 if (ai.type != SAI_ULL)
-                    cbit_panic("wrong type for '*' argument in format string: %s\n", fmt);
+                    cbit_panic("sfmt: wrong type for '*' argument in format string: %s\n", orig_fmt);
                 long long xout = (long long) ai.ull;
                 if (xout < 0) {
                     if (!ai.ull_is_signed)
-                        cbit_panic("'*' value out of range lol\n");
+                        cbit_panic("sfmt: '*' value out of range lol\n");
                     negate = true;
                     xout = -xout;
                 }
                 if (xout > 1000)
-                    cbit_panic("'*' value out of range lol\n");
+                    cbit_panic("sfmt: '*' value out of range lol\n");
                 out = (unsigned) xout;
             }
             if (i == 0) {
@@ -247,21 +249,22 @@ str str_sfmt_impl(const char *fmt, ...) {
         case 'x':
         hex:
             if (ai.type != SAI_ULL)
-                cbit_panic("%%%c can only take arguments of integer type\n", c);
+                cbit_panic("sfmt: %%%c can only take arguments of integer type\n", c);
             sfmt_hex(tmp, &ai.str_storage, ai.ull, ai.ull_is_signed,
                      poschar, altform, caps);
             to_print = &ai.str_storage;
             break;
         case 'd':
             if (ai.type != SAI_ULL)
-                cbit_panic("%%%c can only take arguments of integer type\n", c);
+                cbit_panic("sfmt: %%%c can only take arguments of integer type\n", c);
         case 's':
             switch (ai.type) {
             case SAI_ULL:
                 if (altform)
-                    cbit_panic("pointless alternate form on decimal in format string: %s\n", fmt);
+                    cbit_panic("sfmt: pointless alternate form on decimal in format string: %s\n",
+                               orig_fmt);
                 if (ai.ull_is_bool && c != 'd')
-                    to_print = ai.ull ? S("true") : S("false")
+                    to_print = ai.ull ? S("true") : S("false");
                 else
                     sfmt_decint(tmp, to_print, ai.ull, ai.ull_is_signed, poschar);
                 break;
@@ -273,23 +276,31 @@ str str_sfmt_impl(const char *fmt, ...) {
                 free_to_print = ai.str_is_owned;
                 break;
             }
+            break;
         default:
-            cbit_panic("unknown format character '%c' in format string: %s\n", c, fmt);
+            cbit_panic("sfmt: unknown format character '%c' in format string: %s\n",
+                       c, orig_fmt);
         }
         size_t actual_length = cbit_min(precision, to_print->length);
         size_t pad_length = actual_length >= width ? 0 : (width - actual_length);
         char *op = str_appendp_n(&outstr, pad_length + actual_length);
-        if (pad_length)
-            memset(op, padchar, pad_length);
-        memcpy(op + pad_length, to_print->els, actual_length);
+        if (pad_length) {
+            if (negate) {
+                memset(op + actual_length, padchar, pad_length);
+            } else {
+                memset(op, padchar, pad_length);
+                op += pad_length;
+            }
+        }
+        memcpy(op, to_print->els, actual_length);
 
         if (free_to_print)
             str_free_storage(to_print);
     }
+    if (0) {
+    unsupported:
+        cbit_panic("sfmt: unsupported\n");
+    }
     va_end(ap);
-}
-
-
-int main() {
-    str_sfmt("fmt", 2, 2ul, (short)2000, "lol", 42.0, 42.0f, (char)'f');
+    return outstr;
 }

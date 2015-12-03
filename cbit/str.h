@@ -61,14 +61,14 @@ void str_resize(str *v, size_t new_length) {
         str_realloc_internal_as_necessary(v, new_length);
     v->length = new_length;
 }
-UNUSED_STATIC_INLINE \
+UNUSED_STATIC_INLINE
 char *str_appendp_n(str *v, size_t count) {
     size_t i, new_length;
     cbit_dassert(!STR_DBG_ISREADONLY(v));
     i = v->length;
     new_length = safe_add(v->length, count);
     if (new_length > v->capacity)
-        str_realloc_internal_as_necessary(v, v->length);
+        str_realloc_internal_as_necessary(v, new_length);
     v->length = new_length;
     return &v->els[i];
 }
@@ -101,13 +101,11 @@ str str_copy(const str *v) {
     return ret;
 }
 
-/* This is a lvalue only in the first case. */
 #if __STDC_VERSION__ >= 199901L
-#define S(strlit) ((str) {.length = sizeof(strlit)-1, .capacity = 0, \
-                          .els = (strlit)})
-#else
-#define S(strlit) str_borrow((strlit), sizeof(strlit)-1)
+#define S(strlit) (&((str) {.length = sizeof(strlit)-1, .capacity = 0, \
+                            .els = (strlit)}))
 #endif
+#define Sv(strlit) str_borrow((strlit), sizeof(strlit)-1)
 
 #define STR_STORAGE_CAPA(n) \
     struct { \

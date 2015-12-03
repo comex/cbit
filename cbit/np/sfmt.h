@@ -1,6 +1,6 @@
 #pragma once
 
-#include "str.h"
+#include "../str.h"
 #include <stdbool.h>
 
 #define SFMT_FIRST(arg, args...) arg
@@ -116,13 +116,15 @@ enum sfmt_argtype {
 
 struct test { int a; };
 
+#define CHECK_STR_OR_ADDABLE(__arg) \
+   (_Generic(__arg, str: 0, default: __arg) + 0)
 #define SFMT_ARG(arg) \
     SFMT_ARGTYPE(arg), (arg)
 #define SFMT_ARGTYPE(arg) \
     _Generic(\
         /* the statement expression is to promote from array types */ \
         ({ typeof(arg) __arg; \
-           __arg + 0; /* if you get an error on this line, it means you passed a bad type to sfmt */ \
+           CHECK_STR_OR_ADDABLE(__arg); /* if you get an error on this line, it means you passed a bad type to sfmt */ \
            __arg; }), \
         /* note - char, short, bool, and float will be promoted and must be
          * retrieved as int/double, but at least for bool, the original type is
@@ -150,5 +152,5 @@ struct test { int a; };
     )
 
 // test
-#define str_sfmt(fmt, rest...) str_sfmt_impl(fmt, SFMT_ARGS(rest), SFAT_END)
+#define sfmt(fmt, rest...) str_sfmt_impl(fmt, SFMT_ARGS(rest), SFAT_END)
 str str_sfmt_impl(const char *fmt, ...);

@@ -36,7 +36,8 @@ for suf, opts in [('', '-std=c11'),
                   ('-old', '-std=c89 -pedantic -Wno-long-long -Wno-c11-extensions -DSUPER_OLD_FASHIONED')]:
     do_test('htab'+suf, ['test/test-htab.c'], opts)
     do_test('vec'+suf, ['test/test-vec.c', 'cbit/vec.c'], opts)
-    do_test('str'+suf, ['test/test-str.c', 'cbit/str.c', 'cbit/sfmt.c'], opts)
+    do_test('str'+suf, ['test/test-str.c', 'cbit/str.c'], opts)
+do_test('sfmt', ['test/test-sfmt.c', 'cbit/np/sfmt.c', 'cbit/str.c'], '-std=gnu11')
 
 emitter.add_command(settings, ['all'], list(emitter.all_outs) + test_phonies, [], phony=True)
 emitter.set_default_rule('all')
