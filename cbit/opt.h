@@ -16,10 +16,14 @@
         return o; \
     } \
     UNUSED_STATIC_FORCEINLINE \
-    opt_##name none_##name() { \
+    opt_##name none_##name(void) { \
         opt_##name o; \
         o.have = false; \
         return o; \
+    } \
+    UNUSED_STATIC_FORCEINLINE \
+    bool opt_eq_##name(opt_##name a, opt_##name b) { \
+        return a.have == b.have && (!a.have || a.val == b.val); \
     }
 
 #define __DECL_OPT_KIND_nonzero(name) \
@@ -35,7 +39,7 @@
         return o; \
     } \
     UNUSED_STATIC_FORCEINLINE \
-    opt_##name none_##name() { \
+    opt_##name none_##name(void) { \
         opt_##name o; \
         o.val = 0; \
         return o; \
@@ -82,7 +86,12 @@
 #define TRY(rty, expr...) ({ \
     CBIT_AUTO(_res, (expr)); \
     if (!_res.have) \
-        return NONE(rty); \
+        return none_##rty(); \
     _res.val; \
+})
+#define opt_eq(a, b) ({ \
+    CBIT_AUTO(_a, a); \
+    CBIT_AUTO(_b, b); \
+    _a.have == _b.have && (!_a.have || _a.val == _b.val); \
 })
 #endif

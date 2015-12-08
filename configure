@@ -30,7 +30,7 @@ def do_test(execname, srcs, extra_cflags=[], *args, **kwargs):
                         expand=False)
     emitter.add_command(my_settings, [phonyname], [out_phonyname], [], expand=False, phony=True)
 
-for suf, opts in [('', '-std=c11 -fms-extensions'),
+for suf, opts in [('', '-std=gnu11 -fms-extensions'),
                   # it's not quite valid c89/c++whatever because of the anonymous union/struct but whatever
                   ('-cpp', '-x c++ -std=c++03 -pedantic -Wno-c++11-long-long -Wno-gnu-anonymous-struct -Wno-nested-anon-types'),
                   ('-old', '-std=c89 -pedantic -Wno-long-long -Wno-c11-extensions -DSUPER_OLD_FASHIONED')]:
