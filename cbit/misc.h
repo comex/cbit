@@ -11,6 +11,13 @@
 
 #define cbit_dassert assert
 
+#if CBIT_DEBUG
+    #define cbit_serious_assert assert
+#else
+    #define cbit_serious_assert(x) \
+        do { if (!(x)) abort(); } while(0)
+#endif
+
 #define CBIT_STATIC_ASSERT(what, msg) \
     extern char __cbit_static_assertion(char (*)[(what) ? 1 : -1])
 #define CBIT_STATIC_ASSERT_EXPR(what, msg) \
@@ -53,7 +60,30 @@
 #define CBIT_RESTRICT __restrict
 #endif
 
-#define UNUSED_STATIC_INLINE __attribute__((unused)) static CBIT_INLINE
+#if __GNUC__ > 4 || \
+    (__GNUC__ == 4 && __GNUC_MINOR__ >= 9) || \
+    (__clang__ && __apple_build_version__ > 9999999 /* XXX */) || \
+    (__clang__ && !__apple_build_version__ && \
+        (__clang_major__ > 3 || \
+         (__clang_major__ == 3 && __clang_minor__ > 9999 /* XXX */)))
+    #define CBIT_AUTO_TYPE __auto_type
+#elif __cplusplus >= 201103L
+    #define CBIT_AUTO_TYPE auto
+    #define CBIT_AUTO(x, y) \
+        auto x = (y)
+#endif
+#ifdef CBIT_AUTO_TYPE
+    #define CBIT_AUTO(x, y) \
+        CBIT_AUTO_TYPE x = (y)
+#else
+    #define CBIT_AUTO(x, y) \
+        __typeof((y)) x = (y)
+#endif
+
+#define UNUSED_STATIC_INLINE \
+    __attribute__((unused)) static CBIT_INLINE
+#define UNUSED_STATIC_FORCEINLINE \
+    __attribute__((unused, always_inline)) static CBIT_INLINE
 
 #define LET_LOOP__(expr, ctr) \
     if (0) \
@@ -117,4 +147,19 @@ void cbit_panic(const char *msg, ...) {
     va_end(ap);
     abort();
 }
+#endif
+
+#define cbit_likely(x)   __builtin_expect(!!(x), 1)
+#define cbit_unlikely(x) __builtin_expect(!!(x), 0)
+
+#ifdef __identifier
+#define CBIT_HAVE_MS_EXTS 1
+#else
+#define CBIT_HAVE_MS_EXTS 0
+#endif
+
+#if __GNUC__ && !__STRICT_ANSI__
+#define CBIT_HAVE_GNU_EXTS 1
+#else
+#define CBIT_HAVE_GNU_EXTS 0
 #endif

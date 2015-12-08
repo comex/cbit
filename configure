@@ -30,14 +30,16 @@ def do_test(execname, srcs, extra_cflags=[], *args, **kwargs):
                         expand=False)
     emitter.add_command(my_settings, [phonyname], [out_phonyname], [], expand=False, phony=True)
 
-for suf, opts in [('', '-std=c11'),
+for suf, opts in [('', '-std=c11 -fms-extensions'),
                   # it's not quite valid c89/c++whatever because of the anonymous union/struct but whatever
                   ('-cpp', '-x c++ -std=c++03 -pedantic -Wno-c++11-long-long -Wno-gnu-anonymous-struct -Wno-nested-anon-types'),
                   ('-old', '-std=c89 -pedantic -Wno-long-long -Wno-c11-extensions -DSUPER_OLD_FASHIONED')]:
     do_test('htab'+suf, ['test/test-htab.c'], opts)
     do_test('vec'+suf, ['test/test-vec.c', 'cbit/vec.c'], opts)
     do_test('str'+suf, ['test/test-str.c', 'cbit/str.c'], opts)
-do_test('sfmt', ['test/test-sfmt.c', 'cbit/np/sfmt.c', 'cbit/str.c'], '-std=gnu11')
+    do_test('opt'+suf, ['test/test-opt.c'], opts)
+ext_flags = '-std=gnu11 -fms-extensions'
+do_test('sfmt', ['test/test-sfmt.c', 'cbit/np/sfmt.c', 'cbit/str.c'], ext_flags)
 
 emitter.add_command(settings, ['all'], list(emitter.all_outs) + test_phonies, [], phony=True)
 emitter.set_default_rule('all')

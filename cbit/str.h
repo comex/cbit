@@ -1,4 +1,5 @@
 #pragma once
+#define CBIT_STR_H
 #include "misc.h"
 
 #include <stdlib.h>
