@@ -5,7 +5,7 @@ import mconfig
 settings = mconfig.settings_root
 settings.package_unix_name.value = 'cbit'
 
-mconfig.will_build_and_link_c(settings.host_machine(), link_types={'exec'}, c=True, cxx=False)
+mconfig.will_build_and_link_c(settings.host_machine(), link_types={'exec'}, c=True, cxx=True)
 
 
 mconfig.parse_args()

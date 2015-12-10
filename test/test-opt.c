@@ -4,7 +4,7 @@
 #endif
 
 #if CBIT_HAVE_MS_EXTS
-DECL_OPT(uint16_t, uint16_t, normal);
+DECL_OPT(uint16_t, uint16_t, primitive);
 DECL_OPT(int *, intp, nonzero);
 #endif
 

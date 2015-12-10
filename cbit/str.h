@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <stdio.h>
 
 #ifndef vec_count_t
 typedef uint32_t vec_count_uint32_t;
@@ -153,3 +154,13 @@ str *str_replace(const str *haystack, const str *search, const str *replace);
 
 /* non-typesafe format (just a wrapper around asprintf) */
 str str_fmt(const char *format, ...);
+
+UNUSED_STATIC_INLINE size_t
+str_fwrite(FILE *fp, const str *str) {
+    return fwrite(str->els, 1, str->length, fp);
+}
+
+UNUSED_STATIC_INLINE size_t
+str_print(const str *str) {
+    return str_fwrite(stdout, str);
+}

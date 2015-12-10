@@ -4,7 +4,7 @@
 
 #if DECL_OPT_SUPPORTED || !defined(_OPT_UINT32_T)
 #define _OPT_UINT32_T
-DECL_OPT_MAYBE_ALWAYS(uint32_t, uint32_t, normal);
+DECL_OPT_MAYBE_ALWAYS(uint32_t, uint32_t, primitive);
 #endif
 
 

@@ -3,6 +3,13 @@
 #include "misc.h"
 #include <stdbool.h>
 
+#define __DECL_OPT_KIND_primitive(name) \
+    __DECL_OPT_KIND_normal(name) \
+    UNUSED_STATIC_FORCEINLINE \
+    bool opt_eq_##name(opt_##name a, opt_##name b) { \
+        return a.have == b.have && (!a.have || a.val == b.val); \
+    }
+
 #define __DECL_OPT_KIND_normal(name) \
     typedef struct __opt_struct_##name { \
         bool have; \
@@ -21,10 +28,6 @@
         o.have = false; \
         return o; \
     } \
-    UNUSED_STATIC_FORCEINLINE \
-    bool opt_eq_##name(opt_##name a, opt_##name b) { \
-        return a.have == b.have && (!a.have || a.val == b.val); \
-    }
 
 #define __DECL_OPT_KIND_nonzero(name) \
     typedef union __opt_struct_ptrwrap_##name { \

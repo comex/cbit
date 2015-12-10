@@ -693,7 +693,7 @@ class XcodeToolchain(object):
 
         self.archs = self.get_archs(arch, tarch)
         if self.archs is None:
-            log("%s default Xcode SDK for %r because %s; pass %s=arch1,arch2 to override\n" % (
+            log("*** %s default Xcode SDK for %r because %s; pass %s=arch1,arch2 to override\n" % (
                 "Can't use" if some_explicit_xcode_request else "Not using",
                 self.machine.name,
                 ("triple architecture %r doesn't seem to be valid" % (tarch,)) if tarch else "I couldn't guess a list of architectures from the SDK",
@@ -806,6 +806,10 @@ class CTools(object):
         if machine.name != 'host':
             suff = '_FOR_' + to_upper_and_underscore(machine.name)
         suff += '='
+        group.app_cflags = []
+        group.app_cxxflags = []
+        group.app_ldflags = []
+        group.app_cppflags = []
         self.cflags_opt = group.add_setting_option('cflags', 'CFLAGS'+suff, 'Flags for $CC', [], section=machine.flags_section, type=shlex.split)
         self.cxxflags_opt = group.add_setting_option('cxxflags', 'CXXFLAGS'+suff, 'Flags for $CXX', [], section=machine.flags_section, type=shlex.split)
         self.ldflags_opt = group.add_setting_option('ldflags', 'LDFLAGS'+suff, 'Flags for $CC/$CXX when linking', [], section=machine.flags_section, type=shlex.split)
@@ -1116,7 +1120,7 @@ def add_emitter_option():
         '--generate',
         'The type of build script to generate.  Options: %s (default makefile)' % (', '.join(emitters.keys()),),
         on_set_generate, default='makefile', section=output_section)
-    settings_root.add_setting_option('emit_fn', '--outfile', 'Output file.  Default: depends on type', section=output_section, default=lambda: settings_root.emitter.default_outfile())
+    settings_root.add_setting_option('emit_fn', '--outfile', 'Output file.  Default: Makefile, build.ninja, etc.', section=output_section, default=lambda: settings_root.emitter.default_outfile())
 
 def config_status():
     return '#!/bin/sh\n' + argv_to_shell([sys.executable] + sys.argv) + '\n'
@@ -1159,12 +1163,18 @@ def default_is_cxx(filename):
     root, ext = os.path.splitext(filename)
     return ext in ('cc', 'cpp', 'cxx', 'mm')
 
+
+def get_cflags(mach_settings, is_cxx):
+    return (mach_settings.app_cppflags +
+        (mach_settings.app_cxxflags if is_cxx else mach_settings.app_cflags) +
+        mach_settings.cppflags +
+        (mach_settings.cxxflags if is_cxx else mach_settings.cflags))
 def get_cc_cmd(my_settings, mach_settings, tools, fn, extra_cflags=[]):
     is_cxx = get_else_and(my_settings, 'override_is_cxx', lambda: default_is_cxx(fn))
     include_args = ['-I'+expand(inc, my_settings) for inc in my_settings.c_includes]
     dbg = ['-g'] if mach_settings.debug_info else []
     werror = ['-Werror'] if my_settings.enable_werror else []
-    cflags = expand_argv(get_else_and(my_settings, 'override_cflags', lambda: mach_settings.cppflags + (mach_settings.cxxflags if is_cxx else mach_settings.cflags)), my_settings)
+    cflags = expand_argv(get_else_and(my_settings, 'override_cflags', lambda: get_cflags(mach_settings, is_cxx)), my_settings)
     cc = expand_argv(get_else_and(my_settings, 'override_cc', lambda: (tools.cxx if is_cxx else tools.cc).argv()), my_settings)
     return (cc + dbg + werror + include_args + cflags + extra_cflags, is_cxx)
 
@@ -1257,7 +1267,9 @@ def link_c_objs(emitter, machine, settings, link_type, link_out, objs, link_with
         else:
             typeflag = []
         mach_settings = settings[machine.name]
-        ldflags = get_else_and(settings, 'override_ldflags', lambda: mach_settings.ldflags, _expand_argv)
+        ldflags = get_else_and(settings, 'override_ldflags', lambda:
+            mach_settings.app_ldflags + mach_settings.ldflags,
+            _expand_argv)
         cmds = [cc_for_link + typeflag + ['-o', link_out] + objs + ldflags_from_sets + ldflags]
         if machine.is_darwin() and mach_settings.debug_info:
             cmds.append(tools.dsymutil.argv() + [link_out])
@@ -1300,7 +1312,6 @@ def guess_obj_fn(fn, settings):
 
 
 # -- init code --
-
 
 init_config_log()
 
