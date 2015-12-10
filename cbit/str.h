@@ -150,6 +150,9 @@ typedef STR_STORAGE_CAPA(15) str_storage;
             LET_LOOP(ptr_var = &__sfe_s->els[idx_var])
 
 
+#define autofree_str \
+    __attribute__((cleanup(str_free_storage))) str
+
 str *str_replace(const str *haystack, const str *search, const str *replace);
 
 /* non-typesafe format (just a wrapper around asprintf) */

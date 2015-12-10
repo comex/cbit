@@ -187,3 +187,6 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
         for (size_t idx_var = 0; idx_var < __vfe_v->length; idx_var++) \
             LET_LOOP(ptr_var = &__vfe_v->els[idx_var])
 
+#define autofree_vec(name) \
+    __attribute__((cleanup(vec_free_storage_##name))) struct vec_##name
+
