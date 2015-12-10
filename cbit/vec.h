@@ -3,12 +3,15 @@
 #include <stdlib.h>
 #include <string.h>
 
+#ifndef vec_count_t
+typedef uint32_t vec_count_uint32_t;
+#define vec_count_t vec_count_uint32_t
+#endif
+
 struct vec_internal {
-    size_t length;
-    size_t capacity;
+    vec_count_t length;
+    vec_count_t capacity;
     void *els;
-    char storage[1]; /* must be at least one byte so vec_free
-                        works correctly */
 };
 
 #ifdef __cplusplus
@@ -30,16 +33,15 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
         union { \
             struct vec_internal vi; \
             struct { \
-                size_t length; \
-                size_t capacity; \
+                vec_count_t length; \
+                vec_count_t capacity; \
                 VEC_TY(name) *els; \
-                VEC_TY(name) storage[1]; \
             }; \
         }; \
     }; \
     UNUSED_STATIC_INLINE \
     void vec_free_storage_##name(struct vec_##name *v) { \
-        if (v->els != v->storage) \
+        if (!VEC_CAPACITY_IS_FIXED(v->capacity)) \
             free(v->els); \
     } \
     UNUSED_STATIC_INLINE \
@@ -94,7 +96,7 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
         cbit_dassert(!VEC_DBG_ISREADONLY(v)); \
         i = v->length - 1; \
         ret = v->els[i]; \
-        if (v->els != v->storage && i < v->capacity / 3) \
+        if (!VEC_CAPACITY_IS_FIXED(v->capacity) && i < v->capacity / 3) \
             vec_realloc_internal_as_necessary(&v->vi, i, sizeof(v->els[0])); \
         v->length = i; \
        return ret; \
@@ -139,20 +141,31 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
 #define VEC_STORAGE_CAPA(name, n) \
     struct { \
         struct vec_##name v; \
-        VEC_TY(name) rest[(n)-1]; \
+        VEC_TY(name) storage[(n)]; \
     }
+
+#define VEC_CAPACITY_IS_FIXED(len) \
+    (((len) & 1) || ((len) < 8))
 
 #define VEC_STORAGE_INIT(vs, name) do { \
     struct vec_##name *v = &(vs)->v; \
     v->length = 0; \
-    v->capacity = (sizeof((vs)->rest) / sizeof(VEC_TY(name))) + 1; \
-    v->els = v->storage; \
+    CBIT_STATIC_ASSERT( \
+        VEC_CAPACITY_IS_FIXED(sizeof((vs)->storage) / sizeof(VEC_TY(name))), \
+        "fixed vec_storage size should be odd or < 8" \
+    ); \
+    v->capacity = (sizeof((vs)->storage) / sizeof(VEC_TY(name))); \
+    v->els = (vs)->storage; \
 } while (0)
 
 #define VEC_STORAGE_INITER(vs, name) \
     {{0, \
-      (sizeof((vs)->rest) / sizeof((vs)->rest[0])) + 1, \
-      (vs)->v.storage \
+      (CBIT_STATIC_ASSERT_EXPR( \
+        VEC_CAPACITY_IS_FIXED(sizeof((vs)->storage) / sizeof((vs)->storage[0])), \
+        "fixed vec_storage size should be odd or < 8" \
+       ), \
+       (sizeof((vs)->storage) / sizeof((vs)->storage[0]))), \
+      (vs)->storage \
     }}
 
 #define VEC_INIT(v) do { \

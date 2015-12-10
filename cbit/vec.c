@@ -11,26 +11,27 @@ void vec_realloc_internal(struct vec_internal *vi, size_t new_capacity
                           ) {
     size_t new_size;
     cbit_dassert(!VEC_DBG_ISREADONLY(vi));
-    if (new_capacity == 0) {
-        if (vi->els != vi->storage
-            #ifdef ACTUALLY_STR_REALLOC
-            && vi->els != &str_empty_els
-            #endif
+    if (new_capacity > (vec_count_t) -2
+    #ifndef ACTUALLY_STR_REALLOC
+        || new_capacity > ((size_t) -1) / esize
+    #endif
         )
+        cbit_panic("vec_realloc_internal: capacity too large (%llu)\n",
+                   (long long) new_capacity);
+    if (new_capacity == 0) {
+        if (VEC_CAPACITY_IS_FIXED(vi->capacity))
             free(vi->els);
         vi->els = NULL;
         vi->capacity = 0;
         return;
     }
-    new_size = safe_mul(new_capacity, esize);
+    new_capacity = cbit_max(new_capacity, 8);
+    new_capacity = (new_capacity + 1) & ~1;
+    new_size = new_capacity * esize;
     #ifdef ACTUALLY_STR_REALLOC
         new_size++;
     #endif
-    if (vi->els == vi->storage
-        #ifdef ACTUALLY_STR_REALLOC
-        || vi->els == &str_empty_els
-        #endif
-    ) {
+    if (VEC_CAPACITY_IS_FIXED(vi->capacity)) {
         #ifdef ACTUALLY_STR_REALLOC
             void *new_buf = calloc(new_size, 1);
         #else
@@ -63,7 +64,8 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
             , esize
         #endif
         );
-    } else if (min_capacity < vi->capacity / 3) {
+    } else if (!VEC_CAPACITY_IS_FIXED(vi->capacity) &&
+               min_capacity < vi->capacity / 3) {
         vec_realloc_internal(vi, vi->capacity / 3
         #ifndef ACTUALLY_STR_REALLOC
                              , esize

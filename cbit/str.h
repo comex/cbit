@@ -6,20 +6,27 @@
 #include <string.h>
 #include <stdarg.h>
 
+#ifndef vec_count_t
+typedef uint32_t vec_count_uint32_t;
+#define vec_count_t vec_count_uint32_t
+#endif
+
 /* this is like a vec but not quite the same because it guarantees a trailing
  * nul byte */
 
 typedef struct str {
-    size_t length;
-    size_t capacity;
+    vec_count_t length;
+    vec_count_t capacity;
     char *els;
-    char storage[1];
 } str;
 
 extern char str_empty_els; /* = '\0' */
 
 void str_realloc(str *v, size_t new_capacity);
 void str_realloc_internal_as_necessary(str *s, size_t min_capacity);
+
+#define STR_CAPACITY_IS_FIXED(len) \
+    (((len) & 1) || ((len) < 8))
 
 #define STR_DBG_ISREADONLY(v) ((v)->length && !(v)->capacity)
 
@@ -33,7 +40,7 @@ void str_realloc_internal_as_necessary(str *s, size_t min_capacity);
 
 UNUSED_STATIC_INLINE
 void str_free_storage(str *v) {
-    if (v->els != v->storage && v->els != &str_empty_els)
+    if (!STR_CAPACITY_IS_FIXED(v->capacity))
         free(v->els);
 }
 UNUSED_STATIC_INLINE
@@ -111,21 +118,29 @@ str str_copy(const str *v) {
 #define STR_STORAGE_CAPA(n) \
     struct { \
         str v; \
-        char rest[(n)-1]; \
+        char storage[(n)]; \
     }
-typedef STR_STORAGE_CAPA(16) str_storage;
+typedef STR_STORAGE_CAPA(15) str_storage;
 
 #define STR_STORAGE_INIT(vs) do { \
     str *v = &(vs)->v; \
     v->length = 0; \
-    v->capacity = sizeof((vs)->rest) + 1; \
-    v->els = v->storage; \
+    CBIT_STATIC_ASSERT( \
+        STR_CAPACITY_IS_FIXED(sizeof((vs)->storage)), \
+        "fixed str_storage size should be odd or < 8" \
+    ); \
+    v->capacity = sizeof((vs)->storage); \
+    v->els = (vs)->storage; \
 } while (0)
 
 #define STR_STORAGE_INITER(vs) \
     {{0, \
-      (sizeof((vs)->rest) / sizeof((vs)->rest[0])) + 1, \
-      (vs)->v.storage \
+      (CBIT_STATIC_ASSERT_EXPR( \
+        STR_CAPACITY_IS_FIXED(sizeof((vs)->storage)), \
+        "fixed str_storage size should be odd or < 8" \
+       ), \
+       sizeof((vs)->storage)), \
+      (vs)->storage \
     }}
 
 #define STR_FOREACH(str, idx_var, ptr_var) \

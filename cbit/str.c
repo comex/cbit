@@ -5,13 +5,9 @@
 #define vec_realloc_internal str_realloc
 #define vec_realloc_internal_as_necessary str_realloc_internal_as_necessary
 #define VEC_DBG_ISREADONLY STR_DBG_ISREADONLY
+#define VEC_CAPACITY_IS_FIXED STR_CAPACITY_IS_FIXED
 #define esize 1
 #include "vec.c"
-#undef vec_internal
-#undef vec_realloc_internal
-#undef vec_realloc_internal_as_necessary
-#undef esize
-#undef VEC_DBG_ISREADONLY
 
 char str_empty_els = '\0';
 

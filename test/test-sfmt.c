@@ -1,7 +1,7 @@
 #include "cbit/np/sfmt.h"
 #include <stdio.h>
 void p(str x) {
-    printf("[%zu]<%s>\n", x.length, x.els);
+    printf("[%u]<%s>\n", x.length, x.els);
     str_free_storage(&x);
 }
 int main() {

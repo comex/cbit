@@ -19,7 +19,7 @@
 #endif
 
 #define CBIT_STATIC_ASSERT(what, msg) \
-    extern char __cbit_static_assertion(char (*)[(what) ? 1 : -1])
+    sizeof(char[(what) ? 1 : -1])
 #define CBIT_STATIC_ASSERT_EXPR(what, msg) \
     sizeof(char[(what) ? 1 : -1])
 
@@ -41,6 +41,11 @@
     #if __STDC_VERSION__ >= 201112L
         #undef CBIT_STATIC_ASSERT
         #define CBIT_STATIC_ASSERT _Static_assert
+        #ifdef __BLOCKS__
+            #undef CBIT_STATIC_ASSERT_EXPR
+            #define CBIT_STATIC_ASSERT_EXPR(what, msg) \
+                sizeof(^() { _Static_assert(what, msg); })
+        #endif
     #endif
 #endif
 
