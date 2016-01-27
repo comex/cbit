@@ -407,7 +407,7 @@ def parse_args():
     args, argv = parser.parse_known_args()
     if args.__help or args.__help_all:
         _print_help(include_unused=args.__help_all)
-        sys.exit(0)
+        sys.exit(1)
     unrecognized_env = []
     def do_env_arg(arg):
         m = re.match('([^- ]+)=(.*)', arg)
@@ -425,7 +425,7 @@ def parse_args():
         print ('unrecognized environment: %s' % (argv_to_shell(unrecognized_env),))
     if unrecognized_argv or unrecognized_env:
         _print_help()
-        sys.exit(0)
+        sys.exit(1)
 
     for opt in all_options:
         try:
@@ -814,8 +814,8 @@ class CTools(object):
         self.cxxflags_opt = group.add_setting_option('cxxflags', 'CXXFLAGS'+suff, 'Flags for $CXX', [], section=machine.flags_section, type=shlex.split)
         self.ldflags_opt = group.add_setting_option('ldflags', 'LDFLAGS'+suff, 'Flags for $CC/$CXX when linking', [], section=machine.flags_section, type=shlex.split)
         self.cppflags_opt = group.add_setting_option('cppflags', 'CPPFLAGS'+suff, 'Flags for $CC/$CXX when not linking (supposed to be used for preprocessor flags)', [], section=machine.flags_section, type=shlex.split)
-        self.dbg_info_opt = group.add_setting_option('debug_info', '--enable-debug-info', 'Enable -g', False, bool=True)
         settings.enable_werror_opt.need()
+        settings.enable_debug_info_opt.need()
 
 
 # A nicer - but optional - way of doing multiple tests that will print all the
@@ -1172,7 +1172,7 @@ def get_cflags(mach_settings, is_cxx):
 def get_cc_cmd(my_settings, mach_settings, tools, fn, extra_cflags=[]):
     is_cxx = get_else_and(my_settings, 'override_is_cxx', lambda: default_is_cxx(fn))
     include_args = ['-I'+expand(inc, my_settings) for inc in my_settings.c_includes]
-    dbg = ['-g'] if mach_settings.debug_info else []
+    dbg = ['-g'] if my_settings.enable_debug_info else []
     werror = ['-Werror'] if my_settings.enable_werror else []
     cflags = expand_argv(get_else_and(my_settings, 'override_cflags', lambda: get_cflags(mach_settings, is_cxx)), my_settings)
     cc = expand_argv(get_else_and(my_settings, 'override_cc', lambda: (tools.cxx if is_cxx else tools.cc).argv()), my_settings)
@@ -1271,7 +1271,7 @@ def link_c_objs(emitter, machine, settings, link_type, link_out, objs, link_with
             mach_settings.app_ldflags + mach_settings.ldflags,
             _expand_argv)
         cmds = [cc_for_link + typeflag + ['-o', link_out] + objs + ldflags_from_sets + ldflags]
-        if machine.is_darwin() and mach_settings.debug_info:
+        if machine.is_darwin() and settings.enable_debug_info:
             cmds.append(tools.dsymutil.argv() + [link_out])
     elif link_type == 'staticlib':
         cmds = [tools.ar.argv() + ['rcs'] + objs]
@@ -1348,6 +1348,7 @@ settings_root.auto_rerun_config = True
 settings_root.c_includes = []
 
 settings_root.enable_werror_opt = settings_root.add_setting_option('enable_werror', '--enable-werror', 'Turn warnings to errors (default on)', default=True, bool=True, show=False)
+settings_root.enable_debug_info_opt = settings_root.add_setting_option('enable_debug_info', '--enable-debug-info', 'Enable -g', default=False, bool=True, show=False)
 
 emitters = {
     'makefile': MakefileEmitter,

@@ -91,6 +91,8 @@ struct htab_internal {
             hi->capacity * 2 <= hi->length * 3) \
             __htab_key_resize_##name(hi, hi->capacity * 2, entry_size); \
         capacity = hi->capacity; \
+        if (capacity == 0) \
+            return NULL; \
         hash = (hash_func(key)) % capacity; \
         i = hash; \
         buckets = (char *) hi->base; \

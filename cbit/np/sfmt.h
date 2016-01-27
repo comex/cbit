@@ -154,3 +154,7 @@ struct test { int a; };
 // test
 #define sfmt(fmt, rest...) str_sfmt_impl(fmt, SFMT_ARGS(rest), SFAT_END)
 str str_sfmt_impl(const char *fmt, ...);
+#define sfmt_out(fmt, rest...) str_sfmt_out_impl(sfmt(fmt, rest))
+static inline void str_sfmt_out_impl(autofree_str s) {
+   str_print(&s);
+}
