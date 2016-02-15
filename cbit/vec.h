@@ -45,12 +45,19 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
             free(v->els); \
     } \
     UNUSED_STATIC_INLINE \
-    struct vec_##name vec_borrow##name(VEC_TY(name) *els, size_t length) { \
+    struct vec_##name vec_borrow_##name(VEC_TY(name) *els, size_t length) { \
         struct vec_##name v; \
         v.length = length; \
         v.capacity = 0; \
         v.els = els; \
         return v; \
+    } \
+    UNUSED_STATIC_INLINE \
+    struct vec_##name \
+    vec_slice_##name(struct vec_##name *v, size_t i, size_t len) { \
+        cbit_dassert(i <= v->length && \
+                     (v->length - i) <= len); \
+        return vec_borrow_##name(v->els + i, len); \
     } \
     UNUSED_STATIC_INLINE \
     void vec_realloc_##name(struct vec_##name *v, size_t new_capacity) { \
@@ -70,7 +77,8 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
         i = v->length; \
         new_length = i + 1; \
         if (i >= v->capacity) \
-            vec_realloc_internal_as_necessary(&v->vi, new_length, sizeof(v->els[0])); \
+            vec_realloc_internal_as_necessary(&v->vi, new_length, \
+                                              sizeof(v->els[0])); \
         v->length = new_length; \
         return &v->els[i]; \
     } \
@@ -81,7 +89,8 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
         i = v->length; \
         new_length = safe_add(v->length, count); \
         if (new_length > v->capacity) \
-            vec_realloc_internal_as_necessary(&v->vi, new_length, sizeof(v->els[0])); \
+            vec_realloc_internal_as_necessary(&v->vi, new_length, \
+                                              sizeof(v->els[0])); \
         v->length = new_length; \
         return &v->els[i]; \
     } \
@@ -102,7 +111,8 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
        return ret; \
     } \
     UNUSED_STATIC_INLINE \
-    void vec_concat_##name(struct vec_##name *v1, const struct vec_##name *v2) { \
+    void vec_concat_##name(struct vec_##name *v1, \
+                           const struct vec_##name *v2) { \
         size_t l1 = v1->length, l2 = v2->length; \
         vec_resize_##name(v1, safe_add(l1, l2)); \
         memcpy(&v1->els[l1], v2->els, l2 * sizeof(v1->els[0])); \
@@ -161,7 +171,8 @@ void vec_realloc_internal_as_necessary(struct vec_internal *vi,
 #define VEC_STORAGE_INITER(vs, name) \
     {{0, \
       (CBIT_STATIC_ASSERT_EXPR( \
-        VEC_CAPACITY_IS_FIXED(sizeof((vs)->storage) / sizeof((vs)->storage[0])), \
+        VEC_CAPACITY_IS_FIXED(sizeof((vs)->storage) / \
+                              sizeof((vs)->storage[0])), \
         "fixed vec_storage size should be odd or < 8" \
        ), \
        (sizeof((vs)->storage) / sizeof((vs)->storage[0]))), \

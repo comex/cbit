@@ -3,14 +3,14 @@
 #include "misc.h"
 #include <stdbool.h>
 
-#define __DECL_OPT_KIND_primitive(name) \
-    __DECL_OPT_KIND_normal(name) \
+#define __DECL_OPT_KIND_PRIMITIVE(name) \
+    __DECL_OPT_KIND_NORMAL(name) \
     UNUSED_STATIC_FORCEINLINE \
     bool opt_eq_##name(opt_##name a, opt_##name b) { \
         return a.have == b.have && (!a.have || a.val == b.val); \
     }
 
-#define __DECL_OPT_KIND_normal(name) \
+#define __DECL_OPT_KIND_NORMAL(name) \
     typedef struct __opt_struct_##name { \
         bool have; \
         __OPT_BASE_##name val; \
@@ -29,23 +29,27 @@
         return o; \
     } \
 
-#define __DECL_OPT_KIND_nonzero(name) \
+#define __DECL_OPT_KIND_NONZERO(name) \
     typedef union __opt_struct_ptrwrap_##name { \
         __OPT_BASE_##name have; \
         __OPT_BASE_##name val; \
     } opt_##name; \
     UNUSED_STATIC_FORCEINLINE \
     opt_##name some_##name(__OPT_BASE_##name val) { \
-        cbit_serious_assert(val); \
         opt_##name o; \
         o.val = val; \
+        cbit_serious_assert(o.have); \
         return o; \
     } \
     UNUSED_STATIC_FORCEINLINE \
     opt_##name none_##name(void) { \
         opt_##name o; \
-        o.val = 0; \
+        o.have = 0; \
         return o; \
+    } \
+    UNUSED_STATIC_FORCEINLINE \
+    bool opt_eq_##name(opt_##name a, opt_##name b) { \
+        return a.val == b.val; \
     }
 
 #define DECL_OPT_ALWAYS(ty, name, kind) \
@@ -57,6 +61,12 @@
         if (!o.have) \
             cbit_panic("unwrap fail"); \
         return o.val; \
+    } \
+    UNUSED_STATIC_INLINE \
+    __OPT_BASE_##name *refunwrap_##name(opt_##name *o) { \
+        if (!o->have) \
+            cbit_panic("refunwrap fail"); \
+        return &o->val; \
     } \
     typedef char __PLZ_END_DECL_OPT_ALWAYS_WITH_SEMICOLON_##name
 

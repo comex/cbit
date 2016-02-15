@@ -57,6 +57,12 @@ str str_borrowc(const char *cstr) {
     return str_borrow(cstr, strlen(cstr));
 }
 UNUSED_STATIC_INLINE
+str str_slice(str *v, size_t i, size_t len) {
+    cbit_dassert(i <= v->length &&
+                 (v->length - i) <= len);
+    return str_borrow(v->els + i, len);
+}
+UNUSED_STATIC_INLINE
 str str_withc(char *cstr) {
     size_t length = strlen(cstr);
     str s;
@@ -132,6 +138,7 @@ typedef STR_STORAGE_CAPA(15) str_storage;
     ); \
     v->capacity = sizeof((vs)->storage); \
     v->els = (vs)->storage; \
+    memset(v->els, 0, v->capacity); \
 } while (0)
 
 #define STR_STORAGE_INITER(vs) \
@@ -167,3 +174,5 @@ UNUSED_STATIC_INLINE size_t
 str_print(const str *str) {
     return str_fwrite(stdout, str);
 }
+
+void str_fread(str *CBIT_RESTRICT out, FILE *CBIT_RESTRICT fp, size_t limit);

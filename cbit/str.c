@@ -26,3 +26,20 @@ str str_fmt(const char *format, ...) {
     return outs;
 }
 
+void str_fread(str *CBIT_RESTRICT out, FILE *CBIT_RESTRICT fp, size_t limit) {
+    size_t offset;
+    if (out->capacity < 8192)
+        str_realloc(out, 8192);
+    offset = out->length;
+    while (1) {
+        size_t desired = cbit_min(out->capacity, limit) - offset;
+        if (desired == 0)
+            break;
+        size_t res = fread(out->els + offset, 1, desired, fp);
+        offset += res;
+        if (res < desired)
+            break;
+        str_realloc(out, out->capacity * 2);
+    }
+    out->length = offset;
+}

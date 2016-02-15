@@ -40,6 +40,7 @@ for suf, opts in [('', '-std=gnu11 -fms-extensions'),
     do_test('opt'+suf, ['test/test-opt.c'], opts)
 ext_flags = '-std=gnu11 -fms-extensions'
 do_test('sfmt', ['test/test-sfmt.c', 'cbit/np/sfmt.c', 'cbit/str.c'], ext_flags)
+do_test('utf8', ['test/test-utf8.c', 'cbit/str.c', 'cbit/utf8.c'])
 
 emitter.add_command(settings, ['all'], list(emitter.all_outs) + test_phonies, [], phony=True)
 emitter.set_default_rule('all')
